@@ -1,4 +1,4 @@
-package com.dani
+package com.dani.loanservice
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
