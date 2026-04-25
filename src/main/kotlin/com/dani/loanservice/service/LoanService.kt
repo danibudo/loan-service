@@ -86,7 +86,7 @@ class LoanService(
         loan.status = LoanStatus.AWAITING_COPY
         val saved = loanRepository.save(loan)
         log.info("Loan {} approved by {}, awaiting copy reservation", loanId, caller.userId)
-        // Phase 6: publish loan.copy_reservation_requested
+        eventPublisher.publishCopyReservationRequested(saved.id, saved.titleId)
         return saved
     }
 
