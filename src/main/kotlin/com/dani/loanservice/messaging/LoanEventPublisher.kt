@@ -35,6 +35,14 @@ class LoanEventPublisher(private val rabbitTemplate: RabbitTemplate) {
         publish(RabbitMQConfig.ROUTING_KEY_LOAN_CANCELLED, LoanCancelledPayload(loanId, memberId, titleId))
     }
 
+    fun publishCopyReservationRequested(loanId: UUID, titleId: UUID) {
+        publish(RabbitMQConfig.ROUTING_KEY_COPY_RESERVATION_REQUESTED, CopyReservationRequestedPayload(loanId, titleId))
+    }
+
+    fun publishCopyReleaseRequested(loanId: UUID, copyId: UUID) {
+        publish(RabbitMQConfig.ROUTING_KEY_COPY_RELEASE_REQUESTED, CopyReleaseRequestedPayload(loanId, copyId))
+    }
+
     private fun <T : Any> publish(routingKey: String, payload: T) {
         val envelope = MessageEnvelope.of(routingKey, payload)
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, routingKey, envelope)
@@ -49,4 +57,6 @@ class LoanEventPublisher(private val rabbitTemplate: RabbitTemplate) {
     private data class LoanStartedPayload(val loanId: UUID, val memberId: UUID, val titleId: UUID, val copyId: UUID, val dueDate: LocalDate)
     private data class LoanEndedPayload(val loanId: UUID, val memberId: UUID, val titleId: UUID)
     private data class LoanCancelledPayload(val loanId: UUID, val memberId: UUID, val titleId: UUID)
+    private data class CopyReservationRequestedPayload(val loanId: UUID, val titleId: UUID)
+    private data class CopyReleaseRequestedPayload(val loanId: UUID, val copyId: UUID)
 }
