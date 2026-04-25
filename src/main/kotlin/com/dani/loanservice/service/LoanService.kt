@@ -6,6 +6,7 @@ import com.dani.loanservice.domain.UserRole
 import com.dani.loanservice.exception.InsufficientPermissionsException
 import com.dani.loanservice.exception.InvalidStatusTransitionException
 import com.dani.loanservice.exception.LoanNotFoundException
+import com.dani.loanservice.messaging.LoanEventPublisher
 import com.dani.loanservice.repository.LoanRepository
 import com.dani.loanservice.repository.LoanSpecification
 import com.dani.loanservice.web.CallerContext
@@ -20,6 +21,7 @@ import java.util.UUID
 @Service
 class LoanService(
     private val loanRepository: LoanRepository,
+    private val eventPublisher: LoanEventPublisher,
     @Value("\${loan.due-days}") private val dueDays: Int,
 ) {
     private val log = LoggerFactory.getLogger(LoanService::class.java)
@@ -39,7 +41,7 @@ class LoanService(
         )
         val saved = loanRepository.save(loan)
         log.info("Loan {} created by member {} for title {}", saved.id, caller.userId, titleId)
-        // Phase 5: publish loan.loan_requested
+        eventPublisher.publishLoanRequested(saved.id, saved.memberId, saved.titleId)
         return saved
     }
 
@@ -101,7 +103,7 @@ class LoanService(
         loan.rejectionReason = reason
         val saved = loanRepository.save(loan)
         log.info("Loan {} rejected by {}", loanId, caller.userId)
-        // Phase 5: publish loan.loan_rejected
+        eventPublisher.publishLoanRejected(saved.id, saved.memberId, saved.titleId, reason)
         return saved
     }
 
@@ -118,7 +120,7 @@ class LoanService(
         loan.dueDate = LocalDate.now().plusDays(dueDays.toLong())
         val saved = loanRepository.save(loan)
         log.info("Loan {} started, due date set to {}", loanId, saved.dueDate)
-        // Phase 5: publish loan.loan_started
+        eventPublisher.publishLoanStarted(saved.id, saved.memberId, saved.titleId, saved.copyId!!, saved.dueDate!!)
         return saved
     }
 
@@ -134,7 +136,8 @@ class LoanService(
         loan.status = LoanStatus.ENDED
         val saved = loanRepository.save(loan)
         log.info("Loan {} ended by {}", loanId, caller.userId)
-        // Phase 7: publish loan.copy_release_requested + loan.loan_ended
+        eventPublisher.publishLoanEnded(saved.id, saved.memberId, saved.titleId)
+        // Phase 7: publish loan.copy_release_requested
         return saved
     }
 
@@ -154,7 +157,7 @@ class LoanService(
         loan.status = LoanStatus.CANCELLED
         val saved = loanRepository.save(loan)
         log.info("Loan {} cancelled by member {}", loanId, caller.userId)
-        // Phase 5: publish loan.loan_cancelled
+        eventPublisher.publishLoanCancelled(saved.id, saved.memberId, saved.titleId)
         // Phase 7: if wasApproved, also publish loan.copy_release_requested
         return saved
     }
