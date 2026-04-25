@@ -93,14 +93,54 @@ class RabbitMQConfig {
     private fun bind(queue: Queue, routingKey: String): Binding =
         BindingBuilder.bind(queue).to(loanServiceExchange()).with(routingKey)
 
+    private fun bindCatalog(queue: Queue, routingKey: String): Binding =
+        BindingBuilder.bind(queue).to(catalogServiceExchange()).with(routingKey)
+
     private fun bindDlq(queueName: String): Binding =
         BindingBuilder.bind(buildDlq(queueName)).to(deadLetterExchange()).with(queueName)
+
+    // --- Saga trigger queues (loan-service publishes) ---
+    @Bean fun copyReservationRequestedQueue() = buildQueue(QUEUE_COPY_RESERVATION_REQUESTED)
+    @Bean fun copyReleaseRequestedQueue()     = buildQueue(QUEUE_COPY_RELEASE_REQUESTED)
+
+    // --- Saga trigger DLQs ---
+    @Bean fun copyReservationRequestedDlq() = buildDlq(QUEUE_COPY_RESERVATION_REQUESTED)
+    @Bean fun copyReleaseRequestedDlq()     = buildDlq(QUEUE_COPY_RELEASE_REQUESTED)
+
+    // --- Bindings: saga trigger queues → loan-service.events ---
+    @Bean fun copyReservationRequestedBinding() = bind(copyReservationRequestedQueue(), ROUTING_KEY_COPY_RESERVATION_REQUESTED)
+    @Bean fun copyReleaseRequestedBinding()     = bind(copyReleaseRequestedQueue(),     ROUTING_KEY_COPY_RELEASE_REQUESTED)
+
+    // --- Bindings: saga trigger DLQs → DLX ---
+    @Bean fun copyReservationRequestedDlqBinding() = bindDlq(QUEUE_COPY_RESERVATION_REQUESTED)
+    @Bean fun copyReleaseRequestedDlqBinding()     = bindDlq(QUEUE_COPY_RELEASE_REQUESTED)
+
+    // --- Saga response queues (catalog-service publishes, loan-service consumes) ---
+    @Bean fun copyReservedQueue()           = buildQueue(QUEUE_COPY_RESERVED)
+    @Bean fun copyReservationFailedQueue()  = buildQueue(QUEUE_COPY_RESERVATION_FAILED)
+    @Bean fun copyReleasedQueue()           = buildQueue(QUEUE_COPY_RELEASED)
+
+    // --- Saga response DLQs ---
+    @Bean fun copyReservedDlq()           = buildDlq(QUEUE_COPY_RESERVED)
+    @Bean fun copyReservationFailedDlq()  = buildDlq(QUEUE_COPY_RESERVATION_FAILED)
+    @Bean fun copyReleasedDlq()           = buildDlq(QUEUE_COPY_RELEASED)
+
+    // --- Bindings: saga response queues → catalog-service.events ---
+    @Bean fun copyReservedBinding()          = bindCatalog(copyReservedQueue(),          ROUTING_KEY_COPY_RESERVED)
+    @Bean fun copyReservationFailedBinding() = bindCatalog(copyReservationFailedQueue(), ROUTING_KEY_COPY_RESERVATION_FAILED)
+    @Bean fun copyReleasedBinding()          = bindCatalog(copyReleasedQueue(),           ROUTING_KEY_COPY_RELEASED)
+
+    // --- Bindings: saga response DLQs → DLX ---
+    @Bean fun copyReservedDlqBinding()          = bindDlq(QUEUE_COPY_RESERVED)
+    @Bean fun copyReservationFailedDlqBinding() = bindDlq(QUEUE_COPY_RESERVATION_FAILED)
+    @Bean fun copyReleasedDlqBinding()          = bindDlq(QUEUE_COPY_RELEASED)
 
     companion object {
         const val EXCHANGE         = "loan-service.events"
         const val CATALOG_EXCHANGE = "catalog-service.events"
         const val DLX              = "dlx.loan-service"
 
+        // Notification queues
         const val QUEUE_LOAN_REQUESTED    = "loan-service.loan.loan_requested"
         const val QUEUE_LOAN_APPROVED     = "loan-service.loan.loan_approved"
         const val QUEUE_LOAN_REJECTED     = "loan-service.loan.loan_rejected"
@@ -116,5 +156,21 @@ class RabbitMQConfig {
         const val ROUTING_KEY_LOAN_ENDED        = "loan.loan_ended"
         const val ROUTING_KEY_LOAN_CANCELLED    = "loan.loan_cancelled"
         const val ROUTING_KEY_LOAN_DUE_REMINDER = "loan.loan_due_reminder"
+
+        // Saga trigger queues
+        const val QUEUE_COPY_RESERVATION_REQUESTED = "loan-service.loan.copy_reservation_requested"
+        const val QUEUE_COPY_RELEASE_REQUESTED     = "loan-service.loan.copy_release_requested"
+
+        const val ROUTING_KEY_COPY_RESERVATION_REQUESTED = "loan.copy_reservation_requested"
+        const val ROUTING_KEY_COPY_RELEASE_REQUESTED     = "loan.copy_release_requested"
+
+        // Saga response queues
+        const val QUEUE_COPY_RESERVED           = "loan-service.catalog.copy_reserved"
+        const val QUEUE_COPY_RESERVATION_FAILED = "loan-service.catalog.copy_reservation_failed"
+        const val QUEUE_COPY_RELEASED           = "loan-service.catalog.copy_released"
+
+        const val ROUTING_KEY_COPY_RESERVED           = "catalog.copy_reserved"
+        const val ROUTING_KEY_COPY_RESERVATION_FAILED = "catalog.copy_reservation_failed"
+        const val ROUTING_KEY_COPY_RELEASED           = "catalog.copy_released"
     }
 }
