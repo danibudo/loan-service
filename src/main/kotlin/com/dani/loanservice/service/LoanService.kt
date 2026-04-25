@@ -137,7 +137,7 @@ class LoanService(
         val saved = loanRepository.save(loan)
         log.info("Loan {} ended by {}", loanId, caller.userId)
         eventPublisher.publishLoanEnded(saved.id, saved.memberId, saved.titleId)
-        // Phase 7: publish loan.copy_release_requested
+        eventPublisher.publishCopyReleaseRequested(saved.id, saved.copyId!!)
         return saved
     }
 
@@ -158,7 +158,7 @@ class LoanService(
         val saved = loanRepository.save(loan)
         log.info("Loan {} cancelled by member {}", loanId, caller.userId)
         eventPublisher.publishLoanCancelled(saved.id, saved.memberId, saved.titleId)
-        // Phase 7: if wasApproved, also publish loan.copy_release_requested
+        if (wasApproved) eventPublisher.publishCopyReleaseRequested(saved.id, saved.copyId!!)
         return saved
     }
 }
