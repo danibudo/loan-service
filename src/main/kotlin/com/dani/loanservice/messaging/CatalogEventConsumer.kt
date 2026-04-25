@@ -51,6 +51,11 @@ class CatalogEventConsumer(
         log.info("Loan {} returned to pending after copy reservation failed: {}", loanId, reason)
     }
 
+    @RabbitListener(queues = [RabbitMQConfig.QUEUE_COPY_RELEASED])
+    fun handleCopyReleased(message: CopyReleasedMessage) {
+        log.info("Copy released confirmed: loanId={}, copyId={}", message.data.loanId, message.data.copyId)
+    }
+
     // --- Incoming message shapes ---
 
     data class CopyReservedMessage(val event: String, val data: CopyReservedData, val metadata: EventMetadata)
@@ -58,4 +63,7 @@ class CatalogEventConsumer(
 
     data class CopyReservationFailedMessage(val event: String, val data: CopyReservationFailedData, val metadata: EventMetadata)
     data class CopyReservationFailedData(val loanId: UUID, val titleId: UUID, val reason: String)
+
+    data class CopyReleasedMessage(val event: String, val data: CopyReleasedData, val metadata: EventMetadata)
+    data class CopyReleasedData(val loanId: UUID, val copyId: UUID, val titleId: UUID)
 }
