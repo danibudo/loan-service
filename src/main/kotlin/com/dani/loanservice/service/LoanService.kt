@@ -3,9 +3,11 @@ package com.dani.loanservice.service
 import com.dani.loanservice.domain.Loan
 import com.dani.loanservice.domain.LoanStatus
 import com.dani.loanservice.domain.UserRole
+import com.dani.loanservice.client.CatalogClient
 import com.dani.loanservice.exception.InsufficientPermissionsException
 import com.dani.loanservice.exception.InvalidStatusTransitionException
 import com.dani.loanservice.exception.LoanNotFoundException
+import com.dani.loanservice.exception.TitleNotFoundException
 import com.dani.loanservice.messaging.LoanEventPublisher
 import com.dani.loanservice.repository.LoanRepository
 import com.dani.loanservice.repository.LoanSpecification
@@ -22,6 +24,7 @@ import java.util.UUID
 class LoanService(
     private val loanRepository: LoanRepository,
     private val eventPublisher: LoanEventPublisher,
+    private val catalogClient: CatalogClient,
     @Value("\${loan.due-days}") private val dueDays: Int,
 ) {
     private val log = LoggerFactory.getLogger(LoanService::class.java)
@@ -30,6 +33,9 @@ class LoanService(
     fun createLoan(caller: CallerContext, titleId: UUID, desiredPickupFrom: LocalDate, desiredPickupTo: LocalDate): Loan {
         if (caller.role != UserRole.MEMBER) {
             throw InsufficientPermissionsException("Only members can submit loan requests")
+        }
+        if (!catalogClient.titleExists(titleId)) {
+            throw TitleNotFoundException(titleId)
         }
         val loan = Loan(
             id = UUID.randomUUID(),
